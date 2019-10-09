@@ -1,6 +1,7 @@
 import sys
 import copy
 import heapq
+import time
 
 class Sudoku(object):
     def __init__(self, puzzle):
@@ -40,6 +41,7 @@ class Sudoku(object):
             self.varChoiceHeuristicMatrix = [[0 for _ in range(9)] for _ in range(9)]
 
         def preParse(self):
+
             # constrict domains
             for i in range(9):
                 for j in range(9):
@@ -57,13 +59,33 @@ class Sudoku(object):
                         var = self.Variable(i,j,0)
                         var.setVarPriority(self.varChoiceHeuristic(i,j))
                         self.unorderedUnassignedVars.append(var)
-                    
+
+            # print "*****************************************"
             # determine variable assignment sequence
             while len(self.unorderedUnassignedVars) != 0:
                 chosenVar = self.findVarWithLowestH()
                 self.orderedUnassignedVars.append(chosenVar)
                 self.unorderedUnassignedVars.remove(chosenVar)
                 self.updateUnorderedUnassignedVars(chosenVar)
+
+            '''
+            self.assignmentSequenceMatrix = copy.deepcopy(self.puzzle)
+            for p in self.orderedUnassignedVars:
+                print p
+                self.printMatrix(p)
+
+        def printMatrix(self, p):
+            r = p.getRow()
+            c = p.getColumn()
+            self.assignmentSequenceMatrix[r][c] = "X"
+            print "   0  1  2  3  4  5  6  7  8"
+            for i in range(9):
+                print "{} ".format(i),
+                for j in range(9):
+                    print "{} ".format(self.assignmentSequenceMatrix[i][j]),
+                print
+            self.assignmentSequenceMatrix[r][c] = "-"        
+        '''    
 
         def computeEmptySpaceTriplet(self, i, j):
             rSize = len(self.R[i])
@@ -92,16 +114,15 @@ class Sudoku(object):
                 varColumn = var.getColumn()
                 varBox = self.computeBoxNumberWithRowAndColumn(varRow, varColumn)
                 if varRow == row:
-                    self.varChoiceHeuristicMatrix[row][column][0] -= 1                    
-                    if varBox == box:
-                        self.varChoiceHeuristicMatrix[row][column][2] -= 1
-                    var.setVarPriority(self.varChoiceHeuristic(row, column))
+                    self.varChoiceHeuristicMatrix[varRow][varColumn][0] -= 1
+                elif varColumn == column:
+                    self.varChoiceHeuristicMatrix[varRow][varColumn][1] -= 1
 
-                if varColumn == column:
-                    self.varChoiceHeuristicMatrix[row][column][1] -= 1
-                    if varBox == box:
-                        self.varChoiceHeuristicMatrix[row][column][2] -= 1
-                    var.setVarPriority(self.varChoiceHeuristic(row, column))           
+                if varBox == box:
+                    self.varChoiceHeuristicMatrix[varRow][varColumn][2] -= 1
+
+                var.setVarPriority(self.varChoiceHeuristic(varRow, varColumn))
+                      
             pass       
 
         def computeBoxNumberWithRowAndColumn(self, i, j):
@@ -126,6 +147,8 @@ class Sudoku(object):
                     self.removeSelection(var)
                     self.insertIntoRCBDomains(var, selection)
             # run out of consistent values
+            # put selected var back so that this variable will have new domain
+            self.orderedUnassignedVars.insert(0, var)
             return False
 
         def assignmentComplete(self):
@@ -146,9 +169,45 @@ class Sudoku(object):
             return list(rDomainSet.intersection(cDomainSet, bDomainSet))
 
         def valueSelection(self, var, consistentValues):
-            # TODO
-            return consistentValues.pop(0)
+            # ordering values causes a severe performance hit
+            '''
+            row = var.getRow()
+            clm = var.getColumn()
+            box = self.computeBoxNumberWithRowAndColumn(row, clm)
+
+            valueAffectedList = []
             
+            for value in consistentValues:
+                # variables affected
+                affected = 0
+                for i in range(9):
+                    if not self.positionAssigned(row, i):
+                        valueSetForAffectedVar = set(self.getValidValues(self.Variable(row, i, 0)))
+                        if value in valueSetForAffectedVar:
+                            affected += 1
+                    if not self.positionAssigned(i, clm):
+                        valueSetForAffectedVar = set(self.getValidValues(self.Variable(i, clm, 0)))
+                        if value in valueSetForAffectedVar:
+                            affected += 1
+
+                    boxR = box//3*3 + i//3
+                    boxC = box%3*3 + i%3
+                    if not self.positionAssigned(boxR, boxC):
+                        valueSetForAffectedVar = set(self.getValidValues(self.Variable(boxR, boxC, 0)))
+                        if value in valueSetForAffectedVar:
+                            affected += 1 
+                
+                valueAffectedList.append((value, affected))
+
+            # sort values according to their affected number of variables in ascending order
+            valueAffectedList.sort(key = lambda x: x[1])
+            for i in range(len(consistentValues)):
+                consistentValues[i] = valueAffectedList[i][0]                   
+            '''
+            return consistentValues.pop(0)            
+
+        def positionAssigned(self, i, j):
+            return self.solution[i][j] != 0
 
         def forwardCheck(self, var, selection):
             # TODO
@@ -200,6 +259,8 @@ class Sudoku(object):
             def getVarPriority(self):
                 return self.priority
             
+            def __str__(self):
+                return "Index: {},{}, Priority: {}\n".format(self.i, self.j, self.priority)
 
                     
 
@@ -210,7 +271,7 @@ if __name__ == "__main__":
     if len(sys.argv) != 3:
         print ("\nUsage: python sudoku_A2_xx.py input.txt output.txt\n")
         raise ValueError("Wrong number of arguments!")
-
+    
     try:
         f = open(sys.argv[1], 'r')
     except IOError:
@@ -230,11 +291,15 @@ if __name__ == "__main__":
                     i += 1
                     j = 0
 
+    start = time.time()
     sudoku = Sudoku(puzzle)
     ans = sudoku.solve()
+    end = time.time()
+    print(end-start)
 
     with open(sys.argv[2], 'a') as f:
         for i in range(9):
             for j in range(9):
                 f.write(str(ans[i][j]) + " ")
             f.write("\n")
+
