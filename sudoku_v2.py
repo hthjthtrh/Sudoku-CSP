@@ -11,72 +11,93 @@ class Sudoku(object):
 
     def solve(self):
         self.preparse()
-        # self.backTrackSearch()
+        i, j = self.gridSelection()
+        self.backTrackSearch(i, j)
         return self.ans
 
     def preparse(self):
         for i in range(9):
             for j in range(9):
                 if self.puzzle[i][j] != 0:
-                    self.domainMatrix[i][j] = set([i])
-                    outCome = self.enforceArcConsistency(i,j)
-                    if outCome is False:
-                        return
+                    self.domainMatrix[i][j] = set([self.puzzle[i][j]])
                 else:
                     self.unassignedGrids.append((i,j))
 
-    def enforceArcConsistency(self, i, j):
+        for unassignedGrid in self.unassignedGrids:
+            self.enforceArcConsistency(unassignedGrid[0],unassignedGrid[1])
+            # print "position: {},{} domain:{}".format(unassignedGrid[0], unassignedGrid[1], self.domainMatrix[unassignedGrid[0]][unassignedGrid[1]])
 
-        for val in self.domainMatrix(i, j):
-            for col in range(9):
-                if col == j or self.ans[i][col] != 0: continue
-                
-
-
-    def enforceArcConsistency(self, i, j):
-        tempDomain = copy.deepcopy(self.domainMatrix[i][j])
-        for val in tempDomain:
-            if val in self.domainMatrix[i][j]:
-                # grids of same row
-                for col in range(9):
-                    # skip the current grid or already assigned
-                    if col == j or self.ans[i][col] != 0: continue
-                    domainToReduce = self.domainMatrix[i][col]
-                    if val in domainToReduce:
-                        domainToReduce.remove(val)
-                        if len(domainToReduce) == 0:
-                            return False
-                        else:
-                            self.enforceArcConsistency(i, col)
-
-                # grids of same column
-                for row in range(9):
-                    # skip the current grid or already assigned
-                    if row == i or self.ans[row][j] != 0: continue
-                    domainToReduce = self.domainMatrix[row][j]
-                    if val in domainToReduce:
-                        domainToReduce.remove(val)
-                        if len(domainToReduce) == 0:
-                            return False
-                        else:
-                            self.enforceArcConsistency(row, j)
-                    
-                # grids of same box
-                for pos in range(9):
-                    tempRow = i // 3 * 3 + pos // 3
-                    tempCol = j // 3 * 3 + pos % 3
-
-                    # skip the current grid or already assigned
-                    if (tempRow == i and tempCol == j) or self.ans[tempRow][tempCol] != 0: continue
-                    domainToReduce = self.domainMatrix[tempRow][tempCol]
-                    if val in domainToReduce:
-                        domainToReduce.remove(val)
-                        if len(domainToReduce) == 0:
-                            return False
-                        else:
-                            self.enforceArcConsistency(tempRow, tempCol)
+        '''
+        for i in range(9):
+            for j in range(9):
+                print "position: {},{} domain:{}".format(i, j, self.domainMatrix[i][j])
+        '''
         
 
+    def enforceArcConsistency(self, i, j):
+        #print "position: {},{}".format(i, j)
+        tempDomain = copy.deepcopy(self.domainMatrix[i][j])
+        
+        for val in tempDomain:
+            deletedFlag = False
+            for col in range(9):
+                if col == j: continue
+                domainToCheck = self.domainMatrix[i][col]
+                if (val in domainToCheck) and (len(domainToCheck) == 1):
+                    #print "removed value {} by {},{}".format(val, i, col)
+                    self.domainMatrix[i][j].discard(val)
+                    deletedFlag = True
+                    break
+            
+            if deletedFlag: continue
+            
+            for row in range(9):
+                if row == i: continue
+                domainToCheck = self.domainMatrix[row][j]
+                if (val in domainToCheck) and (len(domainToCheck) == 1):                    
+                    #print "removed value {} by {},{}".format(val, row, j)
+                    self.domainMatrix[i][j].discard(val)      
+                    deletedFlag = True
+                    break
+
+            if deletedFlag: continue
+
+            for pos in range(9):
+                tempRow = i // 3 * 3 + pos // 3
+                tempCol = j // 3 * 3 + pos % 3
+                if tempRow == i and tempCol == j: continue       
+                domainToCheck = self.domainMatrix[tempRow][tempCol]
+                if (val in domainToCheck) and (len(domainToCheck) == 1):                    
+                    #print "removed value {} by {},{}".format(val, tempRow, tempCol)
+                    self.domainMatrix[i][j].discard(val)
+                    break
+
+    def backTrackSearch(self, i, j):
+        self.enforceArcConsistency(i, j)
+        domain = self.domainMatrix[i][j]
+        for val in domain:
+            self.ans[i][j] = val
+            tempSet = copy.deepcopy(self.domainMatrix[i][j])
+            self.domainMatrix[i][j] = set([val])
+            if len(self.unassignedGrids) == 0:
+                return True
+            if self.forwardChecking(i, j):
+                gridRow, gridCol = self.gridSelection()
+                if self.backTrackSearch(gridRow, gridCol):
+                    return True
+
+            self.ans[i][j] = 0
+            self.domainMatrix[i][j] = tempSet
+        
+        self.unassignedGrids.append((i, j))
+        return False
+
+    def forwardChecking(self, i, j):
+        return True
+
+    def gridSelection(self):
+        return self.unassignedGrids.pop()
+    
 
 if __name__ == "__main__":
     # STRICTLY do NOT modify the code in the main function here
