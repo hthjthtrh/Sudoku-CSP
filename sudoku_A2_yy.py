@@ -16,7 +16,7 @@ class Sudoku(object):
 
     def solve(self):
         #TODO: Your code here
-        print "With variable ordering heuristic"
+        print "Without variable ordering heuristic"
         start = time.time()
         self.csp.preParse()
         print "time for preParse = {}".format(time.time()-start)
@@ -57,43 +57,8 @@ class Sudoku(object):
                         self.R[i].discard(num)
                         self.C[j].discard(num)
                         self.B[self.computeBoxNumberWithRowAndColumn(i,j)].discard(num)
-
-            for i in range(9):
-                for j in range(9):
-                    num = self.puzzle[i][j]
-                    if num == 0:
-                        self.varChoiceHeuristicMatrix[i][j] = self.computeEmptySpaceTriplet(i,j)                        
-                        var = self.Variable(i,j,0)
-                        var.setVarPriority(self.varChoiceHeuristic(i,j))
-                        self.unorderedUnassignedVars.append(var)
-                        
-
-            # print "*****************************************"
-            # determine variable assignment sequence
-
-            while len(self.unorderedUnassignedVars) != 0:
-                chosenVar = self.findVarWithLowestH()
-                self.orderedUnassignedVars.append(chosenVar)
-                self.unorderedUnassignedVars.remove(chosenVar)
-                self.updateUnorderedUnassignedVars(chosenVar)
-            '''
-            self.assignmentSequenceMatrix = copy.deepcopy(self.puzzle)
-            for p in self.orderedUnassignedVars:
-                print p
-                self.printMatrix(p)
-
-        def printMatrix(self, p):
-            r = p.getRow()
-            c = p.getColumn()
-            self.assignmentSequenceMatrix[r][c] = "X"
-            print "   0  1  2  3  4  5  6  7  8"
-            for i in range(9):
-                print "{} ".format(i),
-                for j in range(9):
-                    print "{} ".format(self.assignmentSequenceMatrix[i][j]),
-                print
-            self.assignmentSequenceMatrix[r][c] = "-"        
-        '''    
+                    else:
+                        self.orderedUnassignedVars.append(self.Variable(i, j, 0))
 
         def computeEmptySpaceTriplet(self, i, j):
             rSize = len(self.R[i])
@@ -181,40 +146,6 @@ class Sudoku(object):
 
         def valueSelection(self, var, consistentValues):
             # ordering values causes a severe performance hit
-            '''
-            row = var.getRow()
-            clm = var.getColumn()
-            box = self.computeBoxNumberWithRowAndColumn(row, clm)
-
-            valueAffectedList = []
-            
-            for value in consistentValues:
-                # variables affected
-                affected = 0
-                for i in range(9):
-                    if not self.positionAssigned(row, i):
-                        valueSetForAffectedVar = set(self.getValidValues(self.Variable(row, i, 0)))
-                        if value in valueSetForAffectedVar:
-                            affected += 1
-                    if not self.positionAssigned(i, clm):
-                        valueSetForAffectedVar = set(self.getValidValues(self.Variable(i, clm, 0)))
-                        if value in valueSetForAffectedVar:
-                            affected += 1
-
-                    boxR = box//3*3 + i//3
-                    boxC = box%3*3 + i%3
-                    if not self.positionAssigned(boxR, boxC):
-                        valueSetForAffectedVar = set(self.getValidValues(self.Variable(boxR, boxC, 0)))
-                        if value in valueSetForAffectedVar:
-                            affected += 1 
-                
-                valueAffectedList.append((value, affected))
-
-            # sort values according to their affected number of variables in ascending order
-            valueAffectedList.sort(key = lambda x: x[1])
-            for i in range(len(consistentValues)):
-                consistentValues[i] = valueAffectedList[i][0]                   
-            '''
             return consistentValues.pop(0)            
 
         def positionAssigned(self, i, j):
